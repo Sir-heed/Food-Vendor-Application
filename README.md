@@ -35,8 +35,8 @@ python manage.py migrate app
 If the above commands are successful, then you should be able to run the project successfully
 python manage.py runserver
 
-
-Accounts End points
+# End points
+# Accounts End points
 Signup a customer with
 POST http://127.0.0.1:8000/customers/
 
@@ -56,8 +56,7 @@ Logout both vendor and customer
 http://127.0.0.1:8000/logout
 
 
-App End points (Authenticated)
-
+# App End points (Authenticated)
 After Logging in, a csrftoken is added to the cookies response
 append this token to the request header with key "x-csrftoken" to perform action that require authentication
 
