@@ -51,3 +51,10 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = '__all__'
         read_only_fields = ['dateTimeCreated','orderStatus', 'vendor', 'customer']
+
+class OrderReportSerializer(serializers.ModelSerializer):
+    # Serializers to generate report, all the fields are read only
+    class Meta:
+        model = Order
+        fields = '__all__'
+        read_only_fields = ['description']

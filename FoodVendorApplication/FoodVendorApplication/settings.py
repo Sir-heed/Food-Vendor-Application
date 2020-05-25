@@ -85,14 +85,16 @@ WSGI_APPLICATION = 'FoodVendorApplication.wsgi.application'
 #     }
 # }
 
+from . import env
+
 DATABASES = {  
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'foodVendorApplication',                      
-        'USER': 'postgres',                      
-        'PASSWORD': 'password',     # remove "password" & add yours
-        'HOST': 'localhost',                      
-        'PORT': '5432',                      
+        'NAME': env.name, 
+        'USER': env.user,                       
+        'PASSWORD': env.password,                     
+        'HOST': env.host,                  
+        'PORT': env.port
     }
 }
 

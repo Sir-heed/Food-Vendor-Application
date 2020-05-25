@@ -7,8 +7,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
-from .serializers import MenuSerializer, OrderSerializer
+from .serializers import MenuSerializer, OrderSerializer, OrderReportSerializer
 from .models import Menu, Order
+from accounts.models import Customer, Auth, Vendor
 # Create your views here.
 
 # Menu API
@@ -186,9 +187,6 @@ class CancelOrderViewSet(APIView):
                     return Response('Sorry, the order is done thus cannot be canceled', status=status.HTTP_200_OK)
                 else:
                     # Set order status to cancelled
-                    # todaysDate = datetime.now().date()
-                    # todayOrder = Order.objects.get(dateAndTimeOfOrder.date()=todaysDate)
-                    # print(todayOrder)
                     order.orderStatus = Order.ORDER_STATUS[2][0]
                     order.save()
                     return Response('Order cancelled successfully')
@@ -222,22 +220,65 @@ class UpdateOrderStatusViewSet(APIView):
             return Response("There's no order with an id of {}".format(pk), status=status.HTTP_400_BAD_REQUEST)
 
 # Generate daily report of sales
-
 class SalesReportViewSet(APIView):
     permission_classes = [IsAuthenticated]
-    def get(self, request, pk, format=None):
+    def get(self, request, format=None):
         user = request.user
-        # Check if the logged in user is a vendor and the owner of the order
-        if (hasattr(user, 'vendor') and (user.email == order.vendor.user.email)):
-            pass
-            # print(order.dateAndTimeOfOrder.date())
-            # print(datetime.now().date())
-            # todaysDate = datetime.now().date()
-            # todayOrder = Order.objects.get(dateAndTimeOfOrder.date()=todaysDate)
-            # print(todayOrder)
-            # date = date
+        # Check if the logged in user is a vendor
+        if hasattr(user, 'vendor'):
+            # Check the vendors order
+            vendorsOrder = Order.objects.filter(menu__vendor__user=user)
+            # Check the vendors today order
+            day = datetime.now().date()
+            dailyOrder = vendorsOrder.filter(dateAndTimeOfOrder__date=day)
+            paidDailyOrder = dailyOrder.filter(paymentStatus=True)
+            unpaidDailyOrder = dailyOrder.filter(paymentStatus=False)
+            # Check if there is an order
+            if len(dailyOrder) > 0:
+                return Response({
+                    "id": user.id,
+                    "business name": user.vendor.businessName,
+                    "paid order": OrderSerializer(paidDailyOrder, many=True).data,
+                    "pre order": OrderSerializer(unpaidDailyOrder, many=True).data
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response("Sorry you have no order today")
         else:
             return Response("You are not authorized to generate a daily report", status=status.HTTP_401_UNAUTHORIZED)
-# send notifications to the customer on available menu or debts,
 
+
+# send notifications to the customer on available menu or debts,
 # order progress and other relevant information
+class NotificationViewSet(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request, pk, format=None):
+        try:
+            owner = Auth.objects.get(id=pk)
+            # Check if the owner of the account is a vendor
+            if hasattr(owner, 'vendor'):
+                vendorMenu = Menu.objects.filter(vendor=owner.vendor)
+                vendorOrder = Order.objects.filter(vendor=owner.vendor)
+                return Response(
+                    {
+                        "id": owner.id,
+                        "vendor name": owner.vendor.businessName,
+                        "vendor available menu": MenuSerializer(vendorMenu, many=True).data,
+                        "customers orders": OrderSerializer(vendorOrder, many=True).data,
+                        "datetime": datetime.now()
+                    },
+                    status=status.HTTP_200_OK)
+            # Check if the owner of the account is a customer
+            elif hasattr(owner, 'customer'):
+                customerOrder = Order.objects.filter(customer=owner.customer)
+                menu = Menu.objects.all()
+                return Response({
+                    "id": owner.id,
+                    "customer name": owner.customer.lastName + " " + owner.customer.firstName,
+                    "amount outstanding": owner.customer.amountOutstanding,
+                    "customer order": OrderSerializer(customerOrder, many=True).data,
+                    "available menus": MenuSerializer(menu, many=True).data,
+                    "datetime": datetime.now()
+                }, 
+                status=status.HTTP_200_OK)
+        except Auth.DoesNotExist:
+            return Response("There's no user with an id of {}".format(pk), status=status.HTTP_400_BAD_REQUEST)        
